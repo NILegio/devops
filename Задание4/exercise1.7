@@ -1,0 +1,14 @@
+#!/bin/bash
+
+re='^[[:digit:]]+$'
+
+read -r -p "Please, input a length in meters " meters
+
+if [[ $meters =~ $re ]]
+then
+miles=$(echo "$meters*0.000621371" | bc)
+echo $miles
+echo You got $miles miles
+else
+echo "Usually, the length is indicated in digits"
+fi  

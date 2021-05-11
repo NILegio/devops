@@ -1,0 +1,102 @@
+#!/bin/bash
+
+curr_dir=$(pwd)
+exec 2> $curr_dir/temp_error
+log=out_$(date +%y%m%d_%H%M).log
+exec > >(tee $log)
+
+function count_err
+{
+num_err=$( cat $curr_dir/temp_error | grep -E "[[:alnum:]]+:" | wc -l )
+echo -e "\033[31mWarning: $num_err error(s) occurred! \033[0m"
+rm temp_error
+}
+
+function check_parent {
+if [ "$(dirname "$1")" = "$2" ]
+then
+echo "$2 is a parent directory for $1"
+count_err
+exit 1
+fi
+}
+
+function check_dir {
+
+temp1=${1%/}
+temp2=${2%/}
+if [ "$temp1" = "$temp2" ]
+then
+echo "You entered the same directory"
+count_err
+exit 1
+fi
+check_parent "$temp1" "$temp2"
+check_parent "$temp2" "$temp1"
+}
+
+check_dir "$1" "$2"
+source_dir=$1
+destination_dir=$2
+
+
+echo -n "Do you want get timestamp for new archive Y/N? "; read -r -n 1 answer2
+echo
+case "$answer2" in
+[Yy]) flag=( -1 $(date +%y%m%d_%H%M) ); echo OK;;
+[Nn]) echo -n "If you want backup file rotation, you must enter number of backups "; read -r  number;
+if [ "$number" -le 0 ]
+then echo "Sorry, wrong number"
+count_err
+exit 1
+else flag=( $((number-1)) 0 ) 
+fi ;;
+*)  echo "Nothing is also the answer"; count_err; exit 1;;
+esac
+
+cd "$(dirname "$source_dir")"
+archive_name=$( basename "$source_dir" )_"${flag[1]}".tar.gz
+tar -zcf "$archive_name" "$( basename "$source_dir" )"
+
+source=$(du -s "$archive_name" | awk '{print $1}')
+dest=$(df "$destination_dir" | awk 'BEGIN{RS=""}{print $11}')
+
+if [ "$source" -ge "$dest" ]
+then
+echo "Not enough space in destination dir $destination_dir"
+echo -n "Do you want (C)ontinue/Y or (A)bort/N"; read -r -n 1 answer
+echo
+case $answer in
+[CcYy]) echo "Ok";;
+[AaNn]) echo "Ok"; count_err; exit 1;;
+*) echo "Nothing is also the answer"; count_err; exit 1;;
+esac 
+fi
+
+if [ "${flag[0]}" -gt -1 ]
+then
+
+num=$( ls $destination_dir | grep -E "$( basename "$source_dir" )_[0-9]+.tar.gz" | wc -l )
+
+while [ $num -ge ${flag[0]} ]
+do
+echo rmnum $num
+rm $destination_dir/$( basename $source_dir )_$num.tar.gz
+((num-=1))
+done
+
+while [ "$num" -ge 0 ]
+do
+echo mvnum $num
+mv "$destination_dir"/"$( basename "$source_dir" )"_"$num".tar.gz "$destination_dir"/"$( basename "$source_dir" )"_$((num + 1)).tar.gz
+((num-=1))
+done
+
+fi
+
+mv "$archive_name" "$destination_dir"
+
+count_err
+
+echo FIN
+

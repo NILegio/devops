@@ -1,0 +1,43 @@
+#!/bin/bash
+
+function check_parent {
+if [ "$(dirname "$1")" = "$2" ]
+then
+echo "$2 is a parent directory for $1"
+exit 1
+fi
+}
+
+function check_dir {
+
+temp1=${1%/}
+temp2=${2%/}
+if [ "$temp1" = "$temp2" ]
+then
+echo "You entered the same directory"
+exit 1
+fi
+check_parent "$temp1" "$temp2"
+check_parent "$temp2" "$temp1"
+}
+
+
+check_dir "$1" "$2"
+source_dir=$1
+destination_dir=$2
+
+source=$(du -s $source_dir | awk '{print $1}')
+dest=$(df $destination_dir | awk 'BEGIN{RS=""}{print $11}')
+
+if [ "$source" -ge "$dest" ]
+then
+echo "Not enough space in destination dir $destination_dir"
+read -r -n 1 -p "Do you want (C)ontinue/Y or (A)bort/N" answer
+case $answer in
+[CcYy]) echo "Ok";;
+[AaNn]) echo "Ok"; exit 1;;
+*) echo "Nothing is answer too"; exit 1;;
+esac 
+fi
+cp -r -p -t $destination_dir $source_dir 
+#ls $destination_dir 

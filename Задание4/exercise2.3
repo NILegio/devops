@@ -1,0 +1,80 @@
+#!/bin/bash
+
+function check_parent {
+if [ "$(dirname "$1")" = "$2" ]
+then
+echo "$2 is a parent directory for $1"
+exit 1
+fi
+}
+
+function check_dir {
+
+temp1=${1%/}
+temp2=${2%/}
+if [ "$temp1" = "$temp2" ]
+then
+echo "You entered the same directory"
+exit 1
+fi
+check_parent "$temp1" "$temp2"
+check_parent "$temp2" "$temp1"
+}
+
+check_dir "$1" "$2"
+source_dir=$1
+destination_dir=$2
+
+
+read -r -n 1 -p "Do you want get timestamp for new archive Y/N?" answer2
+case "$answer2" in
+[Yy]) flag=( -1 $(date +%y%m%d_%H%M) ); echo OK;;
+[Nn]) read -r -p "If you want backup file rotation, you must enter number of backups " number;
+if [ "$number" -le 0 ]
+then echo "Sorry, wrong number"
+exit 1
+else flag=( $((number-1)) 0 ) 
+fi ;;
+*)  echo "Nothing is also the answer"; exit 1;;
+esac
+
+cd "$(dirname "$source_dir")"
+archive_name=$( basename "$source_dir" )_"${flag[1]}".tar.gz
+tar -zcf "$archive_name" "$( basename "$source_dir" )"
+
+source=$(du -s "$archive_name" | awk '{print $1}')
+dest=$(df "$destination_dir" | awk 'BEGIN{RS=""}{print $11}')
+
+if [ "$source" -ge "$dest" ]
+then
+echo "Not enough space in destination dir $destination_dir"
+read -r -n 1 -p "Do you want (C)ontinue/Y or (A)bort/N" answer
+case $answer in
+[CcYy]) echo "Ok";;
+[AaNn]) echo "Ok"; exit 1;;
+*) echo "Nothing is also the answer"; exit 1;;
+esac 
+fi
+
+if [ "${flag[0]}" -gt -1 ]
+then
+
+num=$( ls $destination_dir | grep -E "$( basename "$source_dir" )_[0-9]+.tar.gz" | wc -l )
+
+while [ $num -ge ${flag[0]} ]
+do
+rm $destination_dir/$( basename $source_dir )_$num.tar.gz
+((num-=1))
+done
+
+while [ "$num" -ge 0 ]
+do
+mv -f "$destination_dir"/"$( basename "$source_dir" )"_"$num".tar.gz "$destination_dir"/"$( basename "$source_dir" )"_$((num + 1)).tar.gz
+((num-=1))
+done
+
+fi
+
+mv "$archive_name" "$destination_dir"
+
+echo FIN

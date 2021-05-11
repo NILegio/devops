@@ -1,0 +1,14 @@
+#!/bin/bash
+
+read -r -n 1 -p "Please, input one symbol " char 
+
+echo -e 
+
+case $char in
+[[:lower:]]) echo "You inputted a lowercase letter";;
+[[:upper:]]) echo "You inputted a uppercase letter";;
+[[:punct:]]) echo "You inputted a punctuation mark";;
+[[:digit:]]) echo "You inputted a digit";;
+[[:space:]]) echo "You inputted a space";;
+*) echo "You inputted nothing";;
+esac

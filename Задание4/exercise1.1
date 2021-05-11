@@ -1,0 +1,11 @@
+#!/bin/bash
+
+user="root"
+
+if [ $user = $USER ]
+then
+echo "Current user $USER is superuser"
+else
+echo "Current user $USER is not enough super"
+fi
+
